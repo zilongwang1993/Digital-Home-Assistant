@@ -159,6 +159,7 @@ def main_logic():
       print "assigned time " + wakeUpTime
     else:
       print "already assigned"
+      print "just a test"
       
 
 
