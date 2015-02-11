@@ -40,18 +40,41 @@ import os, random #to play the mp3 later
 
 # flow = OAuth2WebServerFlow(client_id, client_secret, scope)
 def ringAlarm():
+
   songfile = random.choice(os.listdir("/Users/shuuhui/Desktop/Interstellar/disc01")) 
   print "File Selected:", songfile
-  command ="mpg321" + " " + "/Users/shuuhui/Desktop/Interstellar/disc01" + "'"+songfile+"'"+ " -g 100"
+  command ="afplay " + "/Users/shuuhui/Desktop/Interstellar/disc01/" +repr(songfile)+ " -t 100"
+  print command
   os.system(command)
+
+  
 def checkTime():
-  epoch_time = time.time()  
-  tz_offset = - time.altzone / 3600
-  now= datetime.datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
-  if now> wakeUpTime:
-    print "past due"
+  print "in checkTime"
+  global wakeUpTime
+
+  # epoch_time = time.time()  
+  # tz_offset = - time.altzone / 3600
+  # if tz_offset < 0:
+  #     tz_offset_str = "-%02d00" % abs(tz_offset)
+  # else:
+  #     tz_offset_str = "+%02d00" % abs(tz_offset)
+  # now= datetime.datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%dT%H:%M:%S") 
+
+  dt = datetime.datetime.strptime(wakeUpTime[:-6], '%Y-%m-%dT%H:%M:%S')
+  now = time.localtime()
+  print "wakeUpTime ",dt.hour,dt.minute
+  if (dt.hour ==now.tm_hour) and (dt.minute==now.tm_min) and (dt.day ==now.tm_mday):
+    print "time has come"
+    ringAlarm()
   else:
-    print "time has not come"
+    print "not yet"
+
+  #print (wakeUpTime-now)
+  #if time.strftime('%d-%m-%Y %H:%M',time.localtime(tf_from_timestamp(a_when.start_time))) == time.strftime('%d-%m-%Y %H:%M'):
+  # if now> wakeUpTime:
+  #   print "past due"
+  # else:
+  #   print "time has not come"
 
 
 def main_logic():
@@ -129,20 +152,19 @@ def main_logic():
 
     #   request = service.events().list_next(request, response)
     # get the next 12 hours of events
+    today=datetime.date.today()
     tmr =datetime.date.today() + datetime.timedelta(days=1)
-    tmrEnd=tmr+datetime.timedelta(days=1)
     epoch_time = time.time()
     start_time = epoch_time - 3600  # 1 hour ago
     end_time = epoch_time + 12 * 3600  # 12 hours in the future
     tz_offset = - time.altzone / 3600
     if tz_offset < 0:
-        tz_offset_str = "-%02d00" % abs(tz_offset)
+      tz_offset_str = "-%02d00" % abs(tz_offset)
     else:
-        tz_offset_str = "+%02d00" % abs(tz_offset)
-    start_time = datetime.datetime.fromtimestamp(start_time).strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
-    end_time = datetime.datetime.fromtimestamp(end_time).strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
-    myStart=tmr.strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
-    myEnd=tmrEnd.strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
+      tz_offset_str = "+%02d00" % abs(tz_offset)
+    #tz_offset_str = "+0000"
+    myStart=today.strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
+    myEnd=tmr.strftime("%Y-%m-%dT%H:%M:%S") + tz_offset_str
     #print "Getting calendar events between: " + start_time + " and " + end_time
 
     events = service.events().list(calendarId='primary',timeMin =myStart, timeMax=myEnd, singleEvents=True).execute()
@@ -154,12 +176,13 @@ def main_logic():
     firstEventTime = firstEvent['start']['dateTime']
     print firstEventTime
     global wakeUpTime
+
     if wakeUpTime != firstEventTime:
       wakeUpTime =firstEventTime
       print "assigned time " + wakeUpTime
     else:
       print "already assigned"
-      print "just a test"
+      checkTime()
       
 
 
@@ -172,7 +195,7 @@ def main_logic():
     print ('The credentials have been revoked or expired, please re-run'
            'the application to re-authorize')
 
-wakeUpTime=-1;
+wakeUpTime="-1";
 #main_logic()
 scheduler = BackgroundScheduler()
 scheduler.add_job(main_logic,"interval",seconds=5)
@@ -185,5 +208,6 @@ try:
         # This is here to simulate application activity (which keeps the main thread alive).
     while True: 
         time.sleep(2)
+        
 except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()  
